@@ -1,0 +1,14 @@
+{
+    "food": ["groceries", "restaurants", "cafes","fruit_vegetables","dairy_bakery","dining_out","coffee_tea","snacks","delivery_fees","other"],
+    "transport": ["fuel","public_transport", "cab_rides", "vehicle_maintenance","parking","tolls","other"],
+    "utilities": ["electricity", "water", "internet", "phone","tv_dth","gas","other"],
+    "entertainment": ["movies", "concerts", "games","sports_events","streaming_services","other","hobbies"],
+    "health": ["doctor", "pharmacy", "fitness","therapy","wellness","other","medical_supplies","health_insurance","gym_membership","vitamins_supplements","alternative_medicine"],
+    "others": ["gifts", "donations", "miscellaneous"],
+    "housing": ["rent", "mortgage", "maintenance_hoa","property_taxes","other","furnishings","cleaning_services"],
+    "education": ["tuition", "books", "courses","school_supplies","other","online_learning","workshops_seminars"],
+    "family_kids": ["childcare", "toys", "activities","education_expenses","other","baby_supplies","kids_clothing"],
+    "shopping": ["clothing", "electronics", "personal_care","home_goods","other","accessories","beauty_products"],
+    "subscriptions": ["magazines", "streaming_services", "software","other","newsletters","digital_content"],
+    "personal_care": ["salon", "spa", "gym","other","skincare_products","haircare_products"]
+}

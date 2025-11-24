@@ -1,9 +1,12 @@
 from fastmcp import FastMCP
 import os
 import sqlite3
-
+import json
+from datetime import datetime
+import csv
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "expenses.db")
+CATEGORIES_PATH = os.path.join(os.path.dirname(__file__), "categories.json")
 
 mcp = FastMCP("ExpensesTracker")
 
@@ -97,6 +100,105 @@ def credit():
     return "Expenses Tracker MCP by Akash Bankar."
 
 @mcp.tool()
+def total_expenses(start_date=None, end_date=None):
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        query = "SELECT SUM(amount) FROM expenses WHERE 1=1"
+        params = []
+        if start_date:
+            query += " AND date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND date <= ?"
+            params.append(end_date)
+        cursor.execute(query, params)
+        total = cursor.fetchone()[0] or 0
+        return {"total": total}
+
+@mcp.tool()
+def expenses_by_category():
+    """Get total expenses grouped by category."""
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT category, SUM(amount) FROM expenses GROUP BY category")
+        rows = cursor.fetchall()
+        return {row[0]: row[1] for row in rows}
+
+
+@mcp.tool()
+def export_expenses(file_path="expenses_export.csv"):
+    """Export all expenses to a CSV file."""
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM expenses")
+        rows = cursor.fetchall()
+    with open(file_path, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["id", "amount", "category", "date", "description", "subcategory"])
+        writer.writerows(rows)
+    return {"status": "success", "file": file_path}
+
+
+@mcp.tool()
+def monthly_summary():
+    """Provide a simple dashboard of this month's expenses."""
+    today = datetime.now()
+    start_date = today.replace(day=1).strftime("%Y-%m-%d")
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT SUM(amount) FROM expenses WHERE date >= ?", (start_date,))
+        total = cursor.fetchone()[0] or 0
+        cursor.execute("SELECT category, SUM(amount) FROM expenses WHERE date >= ? GROUP BY category", (start_date,))
+        by_category = {row[0]: row[1] for row in cursor.fetchall()}
+    return {"month": today.month, "total_expenses": total, "by_category": by_category}
+
+
+@mcp.tool()
+def import_expenses(file_path):
+    """Import expenses from CSV."""
+    with open(file_path, newline="") as f:
+        reader = csv.DictReader(f)
+        data = [row for row in reader]
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        for row in data:
+            cursor.execute(
+                "INSERT INTO expenses (amount, category, date, description, subcategory) VALUES (?, ?, ?, ?, ?)",
+                (float(row["amount"]), row["category"], row["date"], row.get("description",""), row.get("subcategory",""))
+            )
+    return {"status": "success", "message": f"{len(data)} expenses imported."}
+
+
+@mcp.tool()
+def list_categories():
+    """List all categories."""
+    with open(CATEGORIES_PATH) as f:
+        return json.load(f)
+
+@mcp.tool()
+def add_category(name):
+    """Add a new category."""
+    with open(CATEGORIES_PATH) as f:
+        categories = json.load(f)
+    if name not in categories:
+        categories.append(name)
+        with open(CATEGORIES_PATH, "w") as f:
+            json.dump(categories, f)
+    return {"status": "success", "categories": categories}
+
+
+@mcp.tool()
+def remove_category(name):
+    """Remove a category."""
+    with open(CATEGORIES_PATH) as f:
+        categories = json.load(f)
+    if name in categories:
+        categories.remove(name)
+        with open(CATEGORIES_PATH, "w") as f:
+            json.dump(categories, f)
+    return {"status": "success", "categories": categories}
+
+@mcp.tool()
 def set_reminder(date, message):
     """Set a reminder for a specific date with a message."""
     # This is a placeholder implementation.
@@ -109,6 +211,11 @@ def reminder_on_mobile_message(mobile, date, message):
     # In a real application, you would integrate with an SMS gateway.
     return {"status": "success", "message": f"Reminder sent to {mobile} for {date} with message: {message}"}
 
+@mcp.resource("expense://categories", mime_type="application/json")
+def categories():
+    """Provide the categories JSON resource."""
+    with open(CATEGORIES_PATH, "r",encoding="utf-8") as f:
+        return f.read()
 
 if __name__ == "__main__":
     mcp.run()
